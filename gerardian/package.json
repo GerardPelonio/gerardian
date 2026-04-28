@@ -1,0 +1,44 @@
+{
+  "name": "gerardian",
+  "version": "1.0.0-stable",
+  "description": "Robust, framework-agnostic security middleware and monitoring SDK for distributed retail and supply chain applications",
+  "main": "src/index.js",
+  "author": "De Belen, Delfino, Pelonio",
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "middleware",
+    "monitoring",
+    "fraud-detection",
+    "risk-scoring",
+    "anomaly-detection",
+    "supply-chain",
+    "retail",
+    "authentication",
+    "transaction-security"
+  ],
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "directories": {
+    "src": "src",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node tests/test.js",
+    "start": "node src/index.js",
+    "lint": "echo 'Linting not configured'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/gerardian.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/gerardian/issues"
+  },
+  "homepage": "https://github.com/yourusername/gerardian#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "geoip-lite": "^1.4.10"
+  }
+}
