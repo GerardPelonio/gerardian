@@ -22,7 +22,6 @@ class GerardianValidationError extends Error {
  */
 class Engine {
   constructor(options = {}) {
-    this.apiKey = options.apiKey || null;
     this.riskThreshold = options.riskThreshold || 75;
     this.failMode = options.failMode || 'fail-closed'; // 'fail-open' or 'fail-closed'
     
@@ -34,10 +33,6 @@ class Engine {
     this.rateLimitWindow = 60000; // 1 minute in ms
     this.rateLimitMaxRequests = 1000;
     this.requestCounts = new Map();
-    
-    if (!this.apiKey) {
-      console.warn('Warning: gerardian initialized without API key');
-    }
   }
 
   /**

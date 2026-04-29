@@ -1,6 +1,6 @@
 {
   "name": "gerardian",
-  "version": "1.0.0-stable",
+  "version": "1.0.2-stable",
   "description": "Robust, framework-agnostic security middleware and monitoring SDK for distributed retail and supply chain applications",
   "main": "src/index.js",
   "author": "De Belen, Delfino, Pelonio",
@@ -38,6 +38,8 @@
   },
   "homepage": "https://github.com/yourusername/gerardian#readme",
   "dependencies": {
-    "geoip-lite": "^1.4.10"
+    "express": "^5.2.1",
+    "geoip-lite": "^1.4.10",
+    "gerardian": "^1.0.1-stable"
   }
 }

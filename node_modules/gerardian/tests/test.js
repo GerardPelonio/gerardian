@@ -1,0 +1,188 @@
+/**
+ * gerardian - Basic Test Suite
+ * Demonstrates core functionality
+ */
+
+const { Engine, GerardianValidationError } = require('../src/engine');
+const { sanitizeInput, hashData, maskSensitiveData, isValidUUID, isValidIP } = require('../src/utils');
+
+console.log('🛡️  gerardian SDK - Test Suite\n');
+console.log('================================\n');
+
+// Initialize the security engine
+const security = new Engine({
+  apiKey: 'test-key-123',
+  riskThreshold: 75,
+  failMode: 'fail-closed'
+});
+
+// Test 1: Transaction Analysis
+console.log('Test 1: Transaction Analysis');
+console.log('----------------------------');
+
+(async () => {
+  try {
+    // Normal transaction
+    const normalTx = await security.analyzeTransaction({
+      orderId: 'order-001',
+      amount: 49.99,
+      userId: 'user-123',
+      currency: 'USD'
+    });
+
+    console.log('✓ Normal transaction:');
+    console.log(`  Status: ${normalTx.status}`);
+    console.log(`  Risk Score: ${normalTx.assessment.riskScore}`);
+    console.log(`  Action: ${normalTx.assessment.action}`);
+    console.log(`  Trace ID: ${normalTx.traceId}\n`);
+
+    // High-value transaction (likely to trigger anomaly)
+    const highValueTx = await security.analyzeTransaction({
+      orderId: 'order-002',
+      amount: 5000.00,
+      userId: 'user-123',
+      currency: 'USD',
+      metadata: {
+        ipCountry: 'JP'
+      }
+    });
+
+    console.log('✓ High-value transaction:');
+    console.log(`  Status: ${highValueTx.status}`);
+    console.log(`  Risk Score: ${highValueTx.assessment.riskScore}`);
+    console.log(`  Action: ${highValueTx.assessment.action}`);
+    console.log(`  Triggers: ${highValueTx.assessment.triggers.join(', ')}\n`);
+
+    // Invalid transaction (missing field)
+    const invalidTx = await security.analyzeTransaction({
+      orderId: 'order-003',
+      amount: 29.99
+      // userId is missing
+    });
+
+    console.log('✓ Invalid transaction (missing userId):');
+    console.log(`  Status: ${invalidTx.status}`);
+    console.log(`  Error: ${invalidTx.error}\n`);
+
+  } catch (error) {
+    console.error('✗ Test failed:', error.message);
+  }
+
+  // Test 2: User Activity Validation
+  console.log('\nTest 2: User Activity Validation');
+  console.log('--------------------------------');
+
+  try {
+    const activityLogs = [
+      {
+        timestamp: new Date(Date.now() - 60000).toISOString(),
+        ipAddress: '192.168.1.1',
+        deviceId: 'device-123'
+      },
+      {
+        timestamp: new Date().toISOString(),
+        ipAddress: '192.168.1.1',
+        deviceId: 'device-123'
+      }
+    ];
+
+    const activityCheck = await security.validateUserActivity(activityLogs);
+
+    console.log('✓ Activity validation:');
+    console.log(`  Suspicious: ${activityCheck.isSuspicious}`);
+    console.log(`  Confidence: ${(activityCheck.confidence * 100).toFixed(1)}%`);
+    console.log(`  Logs analyzed: ${activityCheck.logCount}`);
+    console.log(`  Anomalies: ${activityCheck.anomalies.length > 0 ? activityCheck.anomalies.join(', ') : 'None'}\n`);
+
+  } catch (error) {
+    console.error('✗ Test failed:', error.message);
+  }
+
+  // Test 3: Security Report Generation
+  console.log('Test 3: Security Report Generation');
+  console.log('----------------------------------');
+
+  try {
+    const report = await security.generateSecurityReport({
+      timeframe: '24h',
+      format: 'json'
+    });
+
+    console.log('✓ Report generated:');
+    console.log(`  Trace ID: ${report.traceId}`);
+    console.log(`  Format: ${report.reportMetadata.format}`);
+    console.log(`  Timeframe: ${report.reportMetadata.timeframe}`);
+    console.log(`  Total transactions: ${report.summary.totalTransactionsAnalyzed}\n`);
+
+  } catch (error) {
+    console.error('✗ Test failed:', error.message);
+  }
+
+  // Test 4: Utility Functions
+  console.log('Test 4: Utility Functions');
+  console.log('------------------------');
+
+  try {
+    // Sanitization
+    const dirty = '<script>alert("xss")</script>';
+    const clean = sanitizeInput(dirty);
+    console.log('✓ Input sanitization:');
+    console.log(`  Before: "${dirty}"`);
+    console.log(`  After: "${clean}"\n`);
+
+    // Hashing
+    const password = 'my-secure-password-123';
+    const hashed = hashData(password);
+    console.log('✓ Password hashing:');
+    console.log(`  Original: ${password}`);
+    console.log(`  Hashed: ${hashed}\n`);
+
+    // Masking
+    const creditCard = '4532015112830366';
+    const masked = maskSensitiveData(creditCard, 4);
+    console.log('✓ Data masking:');
+    console.log(`  Original: ${creditCard}`);
+    console.log(`  Masked: ${masked}\n`);
+
+    // UUID validation
+    const validUUID = '550e8400-e29b-41d4-a716-446655440000';
+    const invalidUUID = 'not-a-uuid';
+    console.log('✓ UUID validation:');
+    console.log(`  "${validUUID}" is valid: ${isValidUUID(validUUID)}`);
+    console.log(`  "${invalidUUID}" is valid: ${isValidUUID(invalidUUID)}\n`);
+
+    // IP validation
+    const validIP = '192.168.1.1';
+    const invalidIP = 'not-an-ip';
+    console.log('✓ IP validation:');
+    console.log(`  "${validIP}" is valid: ${isValidIP(validIP)}`);
+    console.log(`  "${invalidIP}" is valid: ${isValidIP(invalidIP)}\n`);
+
+  } catch (error) {
+    console.error('✗ Test failed:', error.message);
+  }
+
+  // Test 5: Error Handling
+  console.log('Test 5: Error Handling');
+  console.log('---------------------');
+
+  try {
+    // Attempt invalid analysis
+    const result = await security.analyzeTransaction({
+      orderId: 'order-123'
+      // missing amount and userId
+    });
+
+    console.log('✓ Validation error handling:');
+    console.log(`  Error caught: ${result.error}\n`);
+
+  } catch (error) {
+    console.error('✗ Unexpected error:', error.message);
+  }
+
+  // Summary
+  console.log('================================');
+  console.log('✅ All tests completed!\n');
+  console.log('gerardian SDK is ready for integration.');
+  console.log('See README.md for integration examples.\n');
+})();
