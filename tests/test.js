@@ -64,6 +64,37 @@ console.log('----------------------------');
     console.log(`  Status: ${invalidTx.status}`);
     console.log(`  Error: ${invalidTx.error}\n`);
 
+    // Test: Impossible Travel
+    console.log('Test: Impossible Travel Detection');
+    console.log('---------------------------------');
+
+    // 1. First transaction in New York
+    await security.analyzeTransaction({
+      orderId: 'order-geo-1',
+      amount: 10.00,
+      userId: 'user-traveler',
+      metadata: {
+        lat: 40.7128,
+        lon: -74.0060 // New York
+      }
+    });
+
+    // 2. Second transaction in London (5 seconds later)
+    const travelTx = await security.analyzeTransaction({
+      orderId: 'order-geo-2',
+      amount: 10.00,
+      userId: 'user-traveler',
+      metadata: {
+        lat: 51.5074,
+        lon: -0.1278 // London
+      }
+    });
+
+    console.log('✓ Impossible Travel transaction:');
+    console.log(`  Status: ${travelTx.status}`);
+    console.log(`  Risk Score: ${travelTx.assessment.riskScore}`);
+    console.log(`  Triggers: ${travelTx.assessment.triggers.join(', ')}\n`);
+
   } catch (error) {
     console.error('✗ Test failed:', error.message);
   }

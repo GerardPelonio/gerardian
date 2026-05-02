@@ -1,5 +1,5 @@
 /**
- * gerardian Engine
+ * Gerardian Engine
  * Security Middleware & Monitoring SDK for distributed retail and supply chain applications
  * @version 1.0.0-stable
  */
@@ -121,6 +121,25 @@ class Engine {
       triggers.push('SUSPICIOUS_PATTERN');
     }
 
+    // Impossible Travel Detection
+    if (orderData.metadata && orderData.metadata.lat && orderData.metadata.lon && userHistory.length > 0) {
+      const lastTx = userHistory[userHistory.length - 1];
+      if (lastTx.lat && lastTx.lon) {
+        const distance = this._calculateDistance(
+          lastTx.lat, lastTx.lon,
+          orderData.metadata.lat, orderData.metadata.lon
+        );
+        
+        const timeDiffHours = (Date.now() - lastTx.timestamp) / 3600000;
+        
+        // If speed > 900 km/h (average commercial flight speed), flag it
+        if (timeDiffHours > 0 && (distance / timeDiffHours) > 900) {
+          riskScore += 40;
+          triggers.push('IMPOSSIBLE_TRAVEL');
+        }
+      }
+    }
+
     // Random baseline noise (represents unknown factors)
     riskScore += Math.random() * 10;
 
@@ -128,6 +147,25 @@ class Engine {
       riskScore: Math.min(100, Math.round(riskScore)),
       triggers
     };
+  }
+
+  /**
+   * Calculate distance between two points using Haversine formula
+   * @param {number} lat1 - Latitude of first point
+   * @param {number} lon1 - Longitude of first point
+   * @param {number} lat2 - Latitude of second point
+   * @param {number} lon2 - Longitude of second point
+   * @returns {number} - Distance in km
+   */
+  _calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   /**
@@ -160,7 +198,11 @@ class Engine {
       this.transactionHistory.get(orderData.userId).push({
         orderId: orderData.orderId,
         amount: orderData.amount,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        riskScore,
+        triggers,
+        lat: orderData.metadata?.lat,
+        lon: orderData.metadata?.lon
       });
 
       // Keep history manageable (last 100 transactions per user)
@@ -206,69 +248,49 @@ class Engine {
 
   /**
    * Validate activity logs for suspicious user behavior
+   * This method implements two primary security heuristics:
+   * 1. Device Fingerprinting: Detects if multiple devices are using the same IP in a short window.
+   * 2. Brute Force Protection: Detects high-frequency activity from a single network source.
+   * 
    * @param {Array<Object>} logs - Array of activity logs (timestamp, ipAddress, deviceId)
-   * @returns {Promise<Object>} - Validation result
+   * @returns {Promise<Object>} - Validation result with suspicion score
    */
   async validateUserActivity(logs) {
     const traceId = this._generateTraceId();
     const timestamp = new Date().toISOString();
 
     try {
-      // Rate limiting check
       this._checkRateLimit('activity');
-
-      if (!Array.isArray(logs) || logs.length === 0) {
-        throw new GerardianValidationError('logs must be a non-empty array');
-      }
+      this._validateActivityInput(logs);
 
       let suspiciousCount = 0;
-      const anomalies = [];
+      const anomalies = new Set();
 
       for (const log of logs) {
-        if (!log.timestamp || !log.ipAddress || !log.deviceId) {
-          throw new GerardianValidationError(
-            'Each log entry must contain timestamp, ipAddress, and deviceId'
-          );
-        }
-
-        // Check for impossible travel (rapid location changes)
-        const logTime = new Date(log.timestamp).getTime();
-        const windowStart = logTime - 3600000; // 1 hour window
-
         const previousLogs = this.activityHistory.get(log.ipAddress) || [];
-        const recentActivity = previousLogs.filter(
-          l => new Date(l.timestamp).getTime() > windowStart
-        );
 
-        if (recentActivity.length > 0 && recentActivity[0].deviceId !== log.deviceId) {
+        /**
+         * Principle: Device Mismatch Detection
+         * If the same IP address is associated with a different deviceId within 1 hour,
+         * it may indicate session hijacking or unauthorized account sharing.
+         */
+        if (this._detectDeviceMismatch(log, previousLogs)) {
           suspiciousCount++;
-          anomalies.push('DEVICE_MISMATCH');
+          anomalies.add('DEVICE_MISMATCH');
         }
 
-        // Check for brute-force patterns (>10 login attempts per minute)
-        const minuteAgo = logTime - 60000;
-        const attemptCount = previousLogs.filter(
-          l => new Date(l.timestamp).getTime() > minuteAgo
-        ).length;
-
-        if (attemptCount > 10) {
+        /**
+         * Principle: Brute Force Detection
+         * If an IP address generates more than 10 activity logs in a single minute,
+         * it is flagged as a potential automated attack or credential stuffing attempt.
+         */
+        if (this._detectBruteForce(log, previousLogs)) {
           suspiciousCount++;
-          anomalies.push('BRUTE_FORCE_ATTEMPT');
+          anomalies.add('BRUTE_FORCE_ATTEMPT');
         }
       }
 
-      // Store activity history
-      const firstLog = logs[0];
-      if (!this.activityHistory.has(firstLog.ipAddress)) {
-        this.activityHistory.set(firstLog.ipAddress, []);
-      }
-      this.activityHistory.get(firstLog.ipAddress).push(...logs);
-
-      // Keep history manageable
-      const history = this.activityHistory.get(firstLog.ipAddress);
-      if (history.length > 500) {
-        history.splice(0, history.length - 500);
-      }
+      this._updateActivityHistory(logs[0].ipAddress, logs);
 
       const isSuspicious = suspiciousCount > 0;
       const confidence = Math.min(1.0, suspiciousCount / logs.length);
@@ -278,29 +300,74 @@ class Engine {
         timestamp,
         isSuspicious,
         confidence: Math.round(confidence * 100) / 100,
-        anomalies,
+        anomalies: Array.from(anomalies),
         logCount: logs.length,
         message: isSuspicious ? 'Suspicious activity detected' : 'Activity appears normal'
       };
     } catch (error) {
-      if (error instanceof GerardianValidationError) {
-        return {
-          traceId,
-          timestamp,
-          error: error.message,
-          isSuspicious: false,
-          confidence: 0
-        };
-      }
-
-      return {
-        traceId,
-        timestamp,
-        error: 'Engine processing error',
-        isSuspicious: false,
-        confidence: 0
-      };
+      return this._handleActivityError(error, traceId, timestamp);
     }
+  }
+
+  /**
+   * Internal helper to validate activity input format
+   */
+  _validateActivityInput(logs) {
+    if (!Array.isArray(logs) || logs.length === 0) {
+      throw new GerardianValidationError('logs must be a non-empty array');
+    }
+    for (const log of logs) {
+      if (!log.timestamp || !log.ipAddress || !log.deviceId) {
+        throw new GerardianValidationError('Each log entry must contain timestamp, ipAddress, and deviceId');
+      }
+    }
+  }
+
+  /**
+   * Internal helper to detect if a device mismatch has occurred on the same IP
+   */
+  _detectDeviceMismatch(currentLog, history) {
+    const oneHourAgo = new Date(currentLog.timestamp).getTime() - 3600000;
+    const recentLogs = history.filter(l => new Date(l.timestamp).getTime() > oneHourAgo);
+    
+    return recentLogs.length > 0 && recentLogs[0].deviceId !== currentLog.deviceId;
+  }
+
+  /**
+   * Internal helper to detect brute force patterns (high frequency from same IP)
+   */
+  _detectBruteForce(currentLog, history) {
+    const oneMinuteAgo = new Date(currentLog.timestamp).getTime() - 60000;
+    const attemptCount = history.filter(l => new Date(l.timestamp).getTime() > oneMinuteAgo).length;
+    
+    return attemptCount > 10;
+  }
+
+  /**
+   * Internal helper to update and prune activity history
+   */
+  _updateActivityHistory(ipAddress, newLogs) {
+    if (!this.activityHistory.has(ipAddress)) {
+      this.activityHistory.set(ipAddress, []);
+    }
+    
+    const history = this.activityHistory.get(ipAddress);
+    history.push(...newLogs);
+
+    if (history.length > 500) {
+      history.splice(0, history.length - 500);
+    }
+  }
+
+  /**
+   * Internal helper to handle activity validation errors
+   */
+  _handleActivityError(error, traceId, timestamp) {
+    const baseResponse = { traceId, timestamp, isSuspicious: false, confidence: 0 };
+    if (error instanceof GerardianValidationError) {
+      return { ...baseResponse, error: error.message };
+    }
+    return { ...baseResponse, error: 'Engine processing error' };
   }
 
   /**
@@ -332,21 +399,28 @@ class Engine {
         threats: []
       };
 
-      // Compile historical data (simplified for demo)
-      let blockedCount = 0;
-      let approvedCount = 0;
-      const triggerFrequency = {};
-
+      // Compile historical data
       this.transactionHistory.forEach((userTransactions) => {
         const recentTransactions = userTransactions.filter(
           t => Date.now() - t.timestamp < timeframeMs
         );
+        
         reportData.summary.totalTransactionsAnalyzed += recentTransactions.length;
+        
+        recentTransactions.forEach(t => {
+          if (t.riskScore >= this.riskThreshold) {
+            reportData.summary.totalBlocked++;
+          } else {
+            reportData.summary.totalApproved++;
+          }
+          
+          if (t.triggers) {
+            t.triggers.forEach(trigger => {
+              reportData.summary.commonTriggers[trigger] = (reportData.summary.commonTriggers[trigger] || 0) + 1;
+            });
+          }
+        });
       });
-
-      reportData.summary.totalBlocked = blockedCount;
-      reportData.summary.totalApproved = approvedCount;
-      reportData.summary.commonTriggers = triggerFrequency;
 
       if (format === 'csv') {
         return this._convertReportToCsv(reportData);
