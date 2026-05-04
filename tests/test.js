@@ -11,7 +11,6 @@ console.log('================================\n');
 
 // Initialize the security engine
 const security = new Engine({
-  apiKey: 'test-key-123',
   riskThreshold: 75,
   failMode: 'fail-closed'
 });

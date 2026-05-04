@@ -1,169 +1,78 @@
 /**
- * gerardian - External API Integrations
- * Free & powerful third-party integrations for enhanced security
+ * gerardian - Local Security Integrations
+ * Offline helpers that avoid external API dependencies
  */
 
-const https = require('https');
-
 /**
- * Have I Been Pwned (HIBP) Integration
- * Check if user's email was in a known data breach
+ * Offline breach heuristic
+ * Checks for known demo indicators without calling external services
  * 
  * @param {string} email - User email to check
  * @returns {Promise<boolean>} - True if breach found
  */
 async function checkCredentialBreach(email) {
-  return new Promise((resolve, reject) => {
-    const encodedEmail = encodeURIComponent(email);
-    const url = `https://haveibeenpwned.com/api/v3/breachedaccount/${encodedEmail}`;
-    
-    const options = {
-      headers: {
-        'User-Agent': 'gerardian-security-sdk/1.0.0',
-        'Accept': 'application/json'
-      }
-    };
+  if (typeof email !== 'string' || email.length === 0) {
+    return false;
+  }
 
-    const req = https.get(url, options, (res) => {
-      let data = '';
+  const normalizedEmail = email.trim().toLowerCase();
+  const suspiciousMarkers = ['breach', 'pwned', 'leak', 'compromised'];
+  const knownDemoEmails = new Set(['test@example.com', 'pwned@example.com']);
 
-      res.on('data', chunk => {
-        data += chunk;
-      });
-
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          // Email found in breach
-          resolve(true);
-        } else if (res.statusCode === 404) {
-          // Email not found (safe)
-          resolve(false);
-        } else if (res.statusCode === 401 || res.statusCode === 429) {
-          // Unauthorized or rate limited - skip silently (return safe)
-          resolve(false);
-        } else {
-          reject(new Error(`HIBP API error: ${res.statusCode}`));
-        }
-      });
-    }).on('error', reject);
-    
-    // Add timeout to prevent hanging
-    req.setTimeout(5000, () => {
-      req.destroy();
-      resolve(false);
-    });
-  });
+  return knownDemoEmails.has(normalizedEmail) || suspiciousMarkers.some(marker =>
+    normalizedEmail.includes(marker)
+  );
 }
 
 /**
  * Get breach information for an email
- * Returns list of breaches this email was part of
+ * Returns a local demo list when the heuristic flags the address
  * 
  * @param {string} email - User email
  * @returns {Promise<Array>} - Array of breaches
  */
 async function getBreachDetails(email) {
-  return new Promise((resolve, reject) => {
-    const encodedEmail = encodeURIComponent(email);
-    const url = `https://haveibeenpwned.com/api/v3/breachedaccount/${encodedEmail}?truncateResponse=false`;
-    
-    const options = {
-      headers: {
-        'User-Agent': 'gerardian-security-sdk/1.0.0',
-        'Accept': 'application/json'
-      }
-    };
+  const isBreached = await checkCredentialBreach(email);
 
-    https.get(url, options, (res) => {
-      let data = '';
+  if (!isBreached) {
+    return [];
+  }
 
-      res.on('data', chunk => {
-        data += chunk;
-      });
-
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          try {
-            resolve(JSON.parse(data));
-          } catch (e) {
-            reject(new Error('Failed to parse HIBP response'));
-          }
-        } else if (res.statusCode === 404) {
-          resolve([]);
-        } else {
-          reject(new Error(`HIBP API error: ${res.statusCode}`));
-        }
-      });
-    }).on('error', reject);
-  });
+  return [
+    {
+      Name: 'Gerardian Demo Breach',
+      Title: 'Local breach heuristic',
+      BreachDate: '2024-01-01',
+      Description: 'Offline demo result returned without calling an external API.'
+    }
+  ];
 }
 
 /**
- * Google Safe Browsing Integration (Free Tier)
- * Detect if URL is malicious/phishing (requires API key but has free tier)
+ * Offline URL safety heuristic
+ * Detects obviously unsafe URLs without external services
  * 
  * @param {string} url - URL to check
  * @returns {Promise<boolean>} - True if URL is safe
  */
 async function checkUrlSafety(url) {
-  // Note: This requires a free Google API key from Google Cloud Console
-  // For now, returning a placeholder - implement with your API key
-  
-  try {
-    const apiKey = process.env.GOOGLE_SAFE_BROWSING_KEY;
-    if (!apiKey) {
-      console.warn('Google Safe Browsing API key not configured');
-      return true;
-    }
-
-    const requestBody = {
-      client: {
-        clientId: 'gerardian-sdk',
-        clientVersion: '1.0.0'
-      },
-      threatInfo: {
-        threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE'],
-        platformTypes: ['ANY_PLATFORM'],
-        threatEntryTypes: ['URL'],
-        threatEntries: [{ url }]
-      }
-    };
-
-    return new Promise((resolve, reject) => {
-      const postData = JSON.stringify(requestBody);
-      
-      const options = {
-        hostname: 'safebrowsing.googleapis.com',
-        path: `/v4/threatMatches:find?key=${apiKey}`,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': postData.length
-        }
-      };
-
-      const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-          try {
-            const result = JSON.parse(data);
-            // If matches array exists and has items, URL is unsafe
-            resolve(!result.matches || result.matches.length === 0);
-          } catch (e) {
-            reject(e);
-          }
-        });
-      });
-
-      req.on('error', reject);
-      req.write(postData);
-      req.end();
-    });
-  } catch (error) {
-    console.error('URL safety check failed:', error.message);
-    return true; // Fail open - allow if check fails
+  if (typeof url !== 'string' || url.trim().length === 0) {
+    return true;
   }
+
+  const normalizedUrl = url.trim().toLowerCase();
+
+  if (
+    normalizedUrl.startsWith('javascript:') ||
+    normalizedUrl.startsWith('data:') ||
+    normalizedUrl.includes('localhost') ||
+    normalizedUrl.includes('127.0.0.1') ||
+    normalizedUrl.includes('0.0.0.0')
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -197,11 +106,11 @@ async function geolocateIP(ipAddress) {
 }
 
 /**
- * Analyze transaction with free external integrations
- * Enhances geraldian's built-in risk scoring
+ * Analyze transaction with local integrations
+ * Enhances gerardian's built-in risk scoring without external dependencies
  * 
  * @param {Object} orderData - Transaction data
- * @param {Object} userEmail - User email (for breach check)
+ * @param {string} userEmail - User email (for breach check)
  * @returns {Promise<Object>} - Enhanced risk assessment
  */
 async function analyzeTransactionWithIntegrations(orderData, userEmail) {

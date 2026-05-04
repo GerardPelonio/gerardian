@@ -1,5 +1,5 @@
 /**
- * Test HIBP Integration with gerardian
+ * Test local integration helpers with gerardian
  * Run with: node hibp-test.js
  */
 
@@ -7,7 +7,7 @@ const { checkCredentialBreach, getBreachDetails, analyzeTransactionWithIntegrati
 const { Engine } = require('../src/index');
 
 (async () => {
-  console.log('🛡️  gerardian + Have I Been Pwned Integration Test\n');
+  console.log('🛡️  gerardian local integration test\n');
   console.log('====================================================\n');
 
   // Initialize gerardian engine
@@ -16,7 +16,7 @@ const { Engine } = require('../src/index');
   // Example 1: Check if a well-known breach email
   console.log('Test 1: Check Email in Known Breach');
   console.log('-----------------------------------');
-  console.log('(Using public test email from HIBP)');
+  console.log('(Using local demo heuristic)');
   
   try {
     // This is a publicly documented test email in HIBP for testing
@@ -33,7 +33,7 @@ const { Engine } = require('../src/index');
       });
     }
   } catch (error) {
-    console.log(`Note: HIBP API check skipped (${error.message})`);
+    console.log(`Note: breach check skipped (${error.message})`);
   }
 
   // Example 2: Transaction with enhanced security checks
@@ -60,14 +60,14 @@ const { Engine } = require('../src/index');
     console.log(`  Status: ${baseAnalysis.status}`);
     console.log(`  Triggers: ${baseAnalysis.assessment.triggers.join(', ') || 'None'}\n`);
 
-    // 2. Run enhanced analysis with external APIs
+    // 2. Run enhanced analysis with local integrations
     const enhancement = await analyzeTransactionWithIntegrations(orderData, orderData.metadata.userEmail);
     
-    console.log('Enhanced Analysis (with integrations):');
+    console.log('Enhanced Analysis (with local integrations):');
     console.log(`  Additional Risk Boost: +${enhancement.riskBoosts} points`);
     console.log(`  New Triggers: ${enhancement.additionalTriggers.join(', ') || 'None'}`);
     console.log(`  Integrations Used:`);
-    console.log(`    - HIBP Breach Check: ${enhancement.integrations.hibp ? '✅' : '❌'}`);
+    console.log(`    - Breach Check: ${enhancement.integrations.hibp ? '✅' : '❌'}`);
     console.log(`    - Geolocation: ${enhancement.integrations.geolocation ? '✅' : '❌'}`);
     console.log(`    - URL Safety: ${enhancement.integrations.urlSafety ? '✅' : '❌'}`);
 
@@ -97,7 +97,7 @@ const { Engine } = require('../src/index');
       const isBreached = await checkCredentialBreach(email);
       console.log(`${email}: ${isBreached ? '⚠️ BREACH FOUND' : '✅ SAFE'}`);
     } catch (error) {
-      console.log(`${email}: ⏭️  SKIPPED (API limit or error)`);
+      console.log(`${email}: ⏭️  SKIPPED (error)`);
     }
   }
 
@@ -107,5 +107,5 @@ const { Engine } = require('../src/index');
   console.log('  1. HIBP integration adds credential breach detection');
   console.log('  2. Risk scores are boosted for compromised accounts');
   console.log('  3. Transactions can be blocked automatically');
-  console.log('  4. 100% FREE - no API keys required for HIBP!');
+  console.log('  4. 100% offline - no API keys required.');
 })();
