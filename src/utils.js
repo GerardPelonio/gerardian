@@ -30,19 +30,6 @@ function sanitizeInput(input) {
 }
 
 /**
- * Hash sensitive data (one-way encryption)
- * @param {string} data - Data to hash
- * @param {string} algorithm - Hash algorithm (default: sha256)
- * @returns {string} - Hashed value
- */
-function hashData(data, algorithm = 'sha256') {
-  return crypto
-    .createHash(algorithm)
-    .update(data)
-    .digest('hex');
-}
-
-/**
  * Encrypt sensitive data (reversible)
  * @param {string} data - Data to encrypt
  * @param {string} key - Encryption key
@@ -167,7 +154,6 @@ async function retryAsync(fn, maxAttempts = 3, delayMs = 1000) {
 
 module.exports = {
   sanitizeInput,
-  hashData,
   encryptData,
   decryptData,
   maskSensitiveData,

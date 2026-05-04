@@ -4,7 +4,7 @@
  */
 
 const { Engine, GerardianValidationError } = require('../src/engine');
-const { sanitizeInput, hashData, maskSensitiveData, isValidUUID, isValidIP } = require('../src/utils');
+const { sanitizeInput, encryptData, decryptData, maskSensitiveData, isValidUUID, isValidIP } = require('../src/utils');
 
 console.log('🛡️  gerardian SDK - Test Suite\n');
 console.log('================================\n');
@@ -25,7 +25,6 @@ console.log('----------------------------');
     const normalTx = await security.analyzeTransaction({
       orderId: 'order-001',
       amount: 49.99,
-      userId: 'user-123',
       currency: 'USD'
     });
 
@@ -39,7 +38,6 @@ console.log('----------------------------');
     const highValueTx = await security.analyzeTransaction({
       orderId: 'order-002',
       amount: 5000.00,
-      userId: 'user-123',
       currency: 'USD',
       metadata: {
         ipCountry: 'JP'
@@ -54,12 +52,10 @@ console.log('----------------------------');
 
     // Invalid transaction (missing field)
     const invalidTx = await security.analyzeTransaction({
-      orderId: 'order-003',
-      amount: 29.99
-      // userId is missing
+      orderId: 'order-003'
     });
 
-    console.log('✓ Invalid transaction (missing userId):');
+    console.log('✓ Invalid transaction (missing required data):');
     console.log(`  Status: ${invalidTx.status}`);
     console.log(`  Error: ${invalidTx.error}\n`);
 
@@ -67,8 +63,8 @@ console.log('----------------------------');
     console.error('✗ Test failed:', error.message);
   }
 
-  // Test 2: User Activity Validation
-  console.log('\nTest 2: User Activity Validation');
+  // Test 2: Activity Validation
+  console.log('\nTest 2: Activity Validation');
   console.log('--------------------------------');
 
   try {
@@ -85,7 +81,7 @@ console.log('----------------------------');
       }
     ];
 
-    const activityCheck = await security.validateUserActivity(activityLogs);
+    const activityCheck = await security.validateActivity(activityLogs);
 
     console.log('✓ Activity validation:');
     console.log(`  Suspicious: ${activityCheck.isSuspicious}`);
@@ -129,12 +125,15 @@ console.log('----------------------------');
     console.log(`  Before: "${dirty}"`);
     console.log(`  After: "${clean}"\n`);
 
-    // Hashing
-    const password = 'my-secure-password-123';
-    const hashed = hashData(password);
-    console.log('✓ Password hashing:');
-    console.log(`  Original: ${password}`);
-    console.log(`  Hashed: ${hashed}\n`);
+    // Encryption / decryption
+    const secret = 'my-secure-secret-123';
+    const encryptionKey = 'demo-key-1234567890demo-key-1234';
+    const encrypted = encryptData(secret, encryptionKey);
+    const decrypted = decryptData(encrypted, encryptionKey);
+    console.log('✓ Encryption / decryption:');
+    console.log(`  Original: ${secret}`);
+    console.log(`  Encrypted: ${encrypted}`);
+    console.log(`  Decrypted: ${decrypted}\n`);
 
     // Masking
     const creditCard = '4532015112830366';
@@ -169,7 +168,6 @@ console.log('----------------------------');
     // Attempt invalid analysis
     const result = await security.analyzeTransaction({
       orderId: 'order-123'
-      // missing amount and userId
     });
 
     console.log('✓ Validation error handling:');

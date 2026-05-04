@@ -1,7 +1,7 @@
 /**
  * Express.js Integration Example
  * Run with: node express-test.js
- * Then test with: curl -X POST http://localhost:3000/transaction -H "Content-Type: application/json" -d '{"orderId":"order-1","amount":150,"userId":"user-1"}'
+ * Then test with: curl -X POST http://localhost:3000/transaction -H "Content-Type: application/json" -d '{"orderId":"order-1","amount":150}'
  */
 
 const express = require('express');
@@ -47,5 +47,5 @@ app.listen(PORT, () => {
   console.log('  GET  http://localhost:3000/health');
   console.log('  POST http://localhost:3000/transaction');
   console.log('\nExample POST body:');
-  console.log('  {"orderId":"order-1","amount":150,"userId":"user-1"}');
+  console.log('  {"orderId":"order-1","amount":150}');
 });

@@ -4,51 +4,6 @@
  */
 
 /**
- * Offline breach heuristic
- * Checks for known demo indicators without calling external services
- * 
- * @param {string} email - User email to check
- * @returns {Promise<boolean>} - True if breach found
- */
-async function checkCredentialBreach(email) {
-  if (typeof email !== 'string' || email.length === 0) {
-    return false;
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const suspiciousMarkers = ['breach', 'pwned', 'leak', 'compromised'];
-  const knownDemoEmails = new Set(['test@example.com', 'pwned@example.com']);
-
-  return knownDemoEmails.has(normalizedEmail) || suspiciousMarkers.some(marker =>
-    normalizedEmail.includes(marker)
-  );
-}
-
-/**
- * Get breach information for an email
- * Returns a local demo list when the heuristic flags the address
- * 
- * @param {string} email - User email
- * @returns {Promise<Array>} - Array of breaches
- */
-async function getBreachDetails(email) {
-  const isBreached = await checkCredentialBreach(email);
-
-  if (!isBreached) {
-    return [];
-  }
-
-  return [
-    {
-      Name: 'Gerardian Demo Breach',
-      Title: 'Local breach heuristic',
-      BreachDate: '2024-01-01',
-      Description: 'Offline demo result returned without calling an external API.'
-    }
-  ];
-}
-
-/**
  * Offline URL safety heuristic
  * Detects obviously unsafe URLs without external services
  * 
@@ -110,28 +65,14 @@ async function geolocateIP(ipAddress) {
  * Enhances gerardian's built-in risk scoring without external dependencies
  * 
  * @param {Object} orderData - Transaction data
- * @param {string} userEmail - User email (for breach check)
  * @returns {Promise<Object>} - Enhanced risk assessment
  */
-async function analyzeTransactionWithIntegrations(orderData, userEmail) {
+async function analyzeTransactionWithIntegrations(orderData) {
   let riskBoosts = 0;
   const additionalTriggers = [];
 
   try {
-    // Check 1: Has user's email been in a breach?
-    if (userEmail) {
-      const isBreached = await checkCredentialBreach(userEmail);
-      if (isBreached) {
-        riskBoosts += 40; // Significant risk boost
-        additionalTriggers.push('CREDENTIAL_BREACH');
-      }
-    }
-  } catch (error) {
-    console.warn('HIBP check failed:', error.message);
-  }
-
-  try {
-    // Check 2: Is the IP address in a safe location?
+    // Check 1: Is the IP address in a safe location?
     if (orderData.metadata?.ipAddress) {
       const geo = await geolocateIP(orderData.metadata.ipAddress);
       // Store for later use in geolocation checks
@@ -142,7 +83,7 @@ async function analyzeTransactionWithIntegrations(orderData, userEmail) {
   }
 
   try {
-    // Check 3: If order contains a URL, check if it's safe
+    // Check 2: If order contains a URL, check if it's safe
     if (orderData.metadata?.shippingUrl) {
       const isSafe = await checkUrlSafety(orderData.metadata.shippingUrl);
       if (!isSafe) {
@@ -158,7 +99,6 @@ async function analyzeTransactionWithIntegrations(orderData, userEmail) {
     riskBoosts,
     additionalTriggers,
     integrations: {
-      hibp: !!userEmail,
       geolocation: !!orderData.metadata?.geolocation,
       urlSafety: !!orderData.metadata?.shippingUrl
     }
@@ -166,8 +106,6 @@ async function analyzeTransactionWithIntegrations(orderData, userEmail) {
 }
 
 module.exports = {
-  checkCredentialBreach,
-  getBreachDetails,
   checkUrlSafety,
   geolocateIP,
   analyzeTransactionWithIntegrations

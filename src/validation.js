@@ -8,11 +8,10 @@
  */
 const TRANSACTION_SCHEMA = {
   type: 'object',
-  required: ['orderId', 'amount', 'userId'],
+  required: ['orderId', 'amount'],
   properties: {
     orderId: { type: 'string', minLength: 1 },
     amount: { type: 'number', minimum: 0 },
-    userId: { type: 'string', minLength: 1 },
     currency: { type: 'string' },
     metadata: { type: 'object' }
   }

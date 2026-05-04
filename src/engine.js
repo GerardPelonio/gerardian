@@ -61,10 +61,6 @@ class Engine {
       throw new GerardianValidationError('amount is required and must be a positive number');
     }
 
-    if (!orderData.userId || typeof orderData.userId !== 'string') {
-      throw new GerardianValidationError('userId is required and must be a string');
-    }
-
     // Optional fields validation
     if (orderData.currency && typeof orderData.currency !== 'string') {
       throw new GerardianValidationError('currency must be a string');
@@ -85,8 +81,8 @@ class Engine {
     const triggers = [];
 
     // Check for velocity-based attacks (multiple transactions in short time)
-    const userHistory = this.transactionHistory.get(orderData.userId) || [];
-    const recentTransactions = userHistory.filter(
+    const allTransactions = Array.from(this.transactionHistory.values()).flat();
+    const recentTransactions = allTransactions.filter(
       t => Date.now() - t.timestamp < 300000 // Last 5 minutes
     );
 
@@ -96,8 +92,8 @@ class Engine {
     }
 
     // Check for unusual amounts
-    if (userHistory.length > 0) {
-      const avgAmount = userHistory.reduce((sum, t) => sum + t.amount, 0) / userHistory.length;
+    if (allTransactions.length > 0) {
+      const avgAmount = allTransactions.reduce((sum, t) => sum + t.amount, 0) / allTransactions.length;
       if (orderData.amount > avgAmount * 2.5) {
         riskScore += 25;
         triggers.push('AMOUNT_ANOMALY');
@@ -132,7 +128,7 @@ class Engine {
 
   /**
    * Analyze incoming transaction for anomalies
-   * @param {Object} orderData - Transaction data (orderId, amount, userId required)
+  * @param {Object} orderData - Transaction data (orderId and amount required)
    * @returns {Promise<Object>} - Assessment result
    */
   async analyzeTransaction(orderData) {
@@ -154,17 +150,17 @@ class Engine {
       const status = action === 'BLOCK' ? 'blocked' : 'approved';
 
       // Update transaction history
-      if (!this.transactionHistory.has(orderData.userId)) {
-        this.transactionHistory.set(orderData.userId, []);
+      if (!this.transactionHistory.has('orders')) {
+        this.transactionHistory.set('orders', []);
       }
-      this.transactionHistory.get(orderData.userId).push({
+      this.transactionHistory.get('orders').push({
         orderId: orderData.orderId,
         amount: orderData.amount,
         timestamp: Date.now()
       });
 
-      // Keep history manageable (last 100 transactions per user)
-      const history = this.transactionHistory.get(orderData.userId);
+      // Keep history manageable (last 100 transactions)
+      const history = this.transactionHistory.get('orders');
       if (history.length > 100) {
         history.shift();
       }
@@ -205,11 +201,11 @@ class Engine {
   }
 
   /**
-   * Validate activity logs for suspicious user behavior
-   * @param {Array<Object>} logs - Array of activity logs (timestamp, ipAddress, deviceId)
+    * Validate activity logs for suspicious device behavior
+    * @param {Array<Object>} logs - Array of activity logs (timestamp, ipAddress, deviceId)
    * @returns {Promise<Object>} - Validation result
    */
-  async validateUserActivity(logs) {
+    async validateActivity(logs) {
     const traceId = this._generateTraceId();
     const timestamp = new Date().toISOString();
 
@@ -245,7 +241,7 @@ class Engine {
           anomalies.push('DEVICE_MISMATCH');
         }
 
-        // Check for brute-force patterns (>10 login attempts per minute)
+        // Check for brute-force patterns (>10 attempts per minute)
         const minuteAgo = logTime - 60000;
         const attemptCount = previousLogs.filter(
           l => new Date(l.timestamp).getTime() > minuteAgo
