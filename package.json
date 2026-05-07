@@ -1,6 +1,10 @@
 {
   "name": "gerardian",
+ feature_testing
+  "version": "1.0.2",
+
   "version": "1.0.3-stable",
+ main
   "description": "Robust, framework-agnostic security middleware and monitoring SDK for distributed retail and supply chain applications",
   "main": "src/index.js",
   "author": "De Belen, Delfino, Pelonio",
@@ -18,7 +22,7 @@
     "transaction-security"
   ],
   "engines": {
-    "node": ">=12.0.0"
+    "node": ">=18.0.0"
   },
   "directories": {
     "src": "src",
@@ -39,7 +43,6 @@
   "homepage": "https://github.com/yourusername/gerardian#readme",
   "dependencies": {
     "express": "^5.2.1",
-    "geoip-lite": "^1.4.10",
-    "gerardian": "^1.0.1-stable"
+    "geoip-lite": "^2.0.1"
   }
 }
