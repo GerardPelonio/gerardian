@@ -118,8 +118,8 @@ class Engine {
     }
 
     // Impossible Travel Detection
-    if (orderData.metadata && orderData.metadata.lat && orderData.metadata.lon && userHistory.length > 0) {
-      const lastTx = userHistory[userHistory.length - 1];
+    if (orderData.metadata && orderData.metadata.lat && orderData.metadata.lon && allTransactions.length > 0) {
+      const lastTx = allTransactions[allTransactions.length - 1];
       if (lastTx.lat && lastTx.lon) {
         const distance = this._calculateDistance(
           lastTx.lat, lastTx.lon,
@@ -166,7 +166,7 @@ class Engine {
 
   /**
    * Analyze incoming transaction for anomalies
-  * @param {Object} orderData - Transaction data (orderId and amount required)
+   * @param {Object} orderData - Transaction data (orderId and amount required)
    * @returns {Promise<Object>} - Assessment result
    */
   async analyzeTransaction(orderData) {
@@ -243,7 +243,6 @@ class Engine {
   }
 
   /**
- feature_testing
    * Validate activity logs for suspicious user behavior
    * This method implements two primary security heuristics:
    * 1. Device Fingerprinting: Detects if multiple devices are using the same IP in a short window.
@@ -251,13 +250,8 @@ class Engine {
    * 
    * @param {Array<Object>} logs - Array of activity logs (timestamp, ipAddress, deviceId)
    * @returns {Promise<Object>} - Validation result with suspicion score
-
-    * Validate activity logs for suspicious device behavior
-    * @param {Array<Object>} logs - Array of activity logs (timestamp, ipAddress, deviceId)
-   * @returns {Promise<Object>} - Validation result
-main
    */
-    async validateActivity(logs) {
+  async validateActivity(logs) {
     const traceId = this._generateTraceId();
     const timestamp = new Date().toISOString();
 
@@ -281,22 +275,12 @@ main
           anomalies.add('DEVICE_MISMATCH');
         }
 
- feature_testing
         /**
          * Principle: Brute Force Detection
          * If an IP address generates more than 10 activity logs in a single minute,
          * it is flagged as a potential automated attack or credential stuffing attempt.
          */
         if (this._detectBruteForce(log, previousLogs)) {
-
-        // Check for brute-force patterns (>10 attempts per minute)
-        const minuteAgo = logTime - 60000;
-        const attemptCount = previousLogs.filter(
-          l => new Date(l.timestamp).getTime() > minuteAgo
-        ).length;
-
-        if (attemptCount > 10) {
- main
           suspiciousCount++;
           anomalies.add('BRUTE_FORCE_ATTEMPT');
         }

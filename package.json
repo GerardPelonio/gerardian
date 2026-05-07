@@ -1,10 +1,6 @@
 {
   "name": "gerardian",
- feature_testing
-  "version": "1.0.2",
-
-  "version": "1.0.3-stable",
- main
+  "version": "1.0.5-stable",
   "description": "Robust, framework-agnostic security middleware and monitoring SDK for distributed retail and supply chain applications",
   "main": "src/index.js",
   "author": "De Belen, Delfino, Pelonio",
@@ -25,7 +21,6 @@
     "node": ">=18.0.0"
   },
   "directories": {
-    "src": "src",
     "test": "tests"
   },
   "scripts": {
@@ -35,7 +30,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/gerardian.git"
+    "url": "git+https://github.com/yourusername/gerardian.git"
   },
   "bugs": {
     "url": "https://github.com/yourusername/gerardian/issues"
