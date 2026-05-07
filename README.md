@@ -1,6 +1,6 @@
 # gerardian 
 
-Lightweight security engine for detecting risky transactions, user activity, and inventory anomalies in distributed systems.
+Lightweight security engine for detecting risky transactions and device activity anomalies in distributed systems.
 
 ---
 
@@ -9,7 +9,7 @@ Lightweight security engine for detecting risky transactions, user activity, and
 Use gerardian to:
 
 Block **fraudulent orders**
-Detect **suspicious user behavior**
+Detect **suspicious activity**
 Monitor **inventory anomalies**
 
 ---
@@ -25,7 +25,6 @@ javascript
 const { Engine } = require('gerardian');
 
 const security = new Engine({
-  apiKey: process.env.GERARDIAN_KEY,
   riskThreshold: 75,       // block if risk >= 75
   failMode: 'fail-closed'  // block if system fails
 });
@@ -49,7 +48,7 @@ javascript
 {
   orderId: "order-123",
   amount: 150.50,
-  userId: "user-456"
+  // no identity fields required
 }
 
 Optional:
@@ -86,14 +85,14 @@ javascript
 
 ---
 
-## Check User Activity (Optional)
+## Check Activity (Optional)
 javascript
-await security.validateUserActivity(activityLogs);
+await security.validateActivity(activityLogs);
 
 Use this for:
 
-login monitoring
-session validation
+device monitoring
+session anomaly detection
 
 ---
 
@@ -140,7 +139,7 @@ try {
 
 ## Utilities (Optional)
 javascript
-const { sanitizeInput, hashData } = require('gerardian');
+const { sanitizeInput, encryptData, decryptData } = require('gerardian');
 
 ---
 
