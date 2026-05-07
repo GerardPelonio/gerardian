@@ -1,6 +1,6 @@
 {
   "name": "gerardian",
-  "version": "1.0.5-stable",
+  "version": "1.0.6-stable",
   "description": "Robust, framework-agnostic security middleware and monitoring SDK for distributed retail and supply chain applications",
   "main": "src/index.js",
   "author": "De Belen, Delfino, Pelonio",
